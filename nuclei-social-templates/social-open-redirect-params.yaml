@@ -1,0 +1,57 @@
+id: social-open-redirect-params
+
+info:
+  name: Open Redirect — Common Social Engineering Redirect Parameters
+  author: Sharon-Needles
+  severity: medium
+  description: |
+    Tests common open redirect query parameters by injecting an external URL as the value.
+    A successful open redirect allows attackers to craft convincing phishing URLs that appear
+    to originate from a trusted domain (e.g., target.com/?next=https://evil.com).
+    Looks for HTTP 3xx redirects pointing to the injected URL, or reflection of the URL in the response body.
+  tags: redirect,open-redirect,social-engineering,phishing,http
+  reference:
+    - https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/11-Client-side_Testing/04-Testing_for_Client-side_URL_Redirect
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/?next=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?redirect=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?redirect_to=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?redirect_url=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?return=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?return_to=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?url=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?goto=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?dest=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?destination=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?target=https://canary.Sharon-Needles.redir.test"
+      - "{{BaseURL}}/?redir=https://canary.Sharon-Needles.redir.test"
+
+    # Don't follow redirects — we want to inspect the Location header directly
+    redirects: false
+    max-redirects: 0
+
+    matchers-condition: or
+    matchers:
+      # 3xx redirect to our injected URL via Location header
+      - type: regex
+        name: redirect-location
+        part: header
+        regex:
+          - "Location: https?://canary\\.Sharon-Needles\\.redir\\.test"
+
+      # Injected URL reflected in response body (could be used for JS-based redirect)
+      - type: word
+        name: redirect-body-reflection
+        part: body
+        words:
+          - "canary.Sharon-Needles.redir.test"
+
+    extractors:
+      - type: regex
+        name: redirect-target
+        part: header
+        regex:
+          - "Location: (https?://[^\\r\\n]+)"

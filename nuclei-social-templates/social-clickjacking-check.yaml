@@ -1,0 +1,49 @@
+id: social-clickjacking-check
+
+info:
+  name: Clickjacking — Login Page Missing Frame Protection Headers
+  author: Sharon-Needles
+  severity: medium
+  description: |
+    Checks pages that contain login/password form fields for missing clickjacking protection.
+    A page is considered vulnerable when ALL of the following are true:
+      1. The response body contains a password input field (indicates a login/sensitive form)
+      2. The X-Frame-Options header is absent
+      3. The Content-Security-Policy header does not contain a frame-ancestors directive
+    This is the narrowest valid clickjacking surface — non-login pages are skipped to
+    reduce noise. The combination of credential input + no frame protection = phishing risk.
+  tags: clickjacking,headers,csp,social-engineering,login,http
+  reference:
+    - https://owasp.org/www-community/attacks/Clickjacking
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}"
+
+    matchers-condition: and
+    matchers:
+      # Must have a password input — confirms this is a login/sensitive form page
+      - type: regex
+        name: has-password-field
+        part: body
+        regex:
+          - "(?i)<input[^>]+type=[\"']?password[\"']?"
+
+      # X-Frame-Options header must be absent
+      - type: word
+        name: no-x-frame-options
+        part: header
+        negative: true
+        words:
+          - "X-Frame-Options:"
+
+      # CSP must not contain a frame-ancestors directive
+      - type: regex
+        name: no-csp-frame-ancestors
+        part: header
+        negative: true
+        regex:
+          - "(?i)frame-ancestors"

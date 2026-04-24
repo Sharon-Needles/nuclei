@@ -82,3 +82,42 @@ Each protocol (HTTP, DNS, Network, etc.) implements:
 - **pkg/fuzz/** - Fuzzing engine and DAST capabilities
 - **pkg/input/** - Input processing for various formats (Burp, OpenAPI, etc.)
 - **pkg/reporting/** - Result export and issue tracking integrations
+
+---
+
+## Sharon-Needles Fork — Custom Social Engineering Templates
+
+This fork adds `nuclei-social-templates/`, a directory of custom YAML templates for social engineering surface detection that upstream nuclei-templates does not cover.
+
+### What Was Added
+| Template | What It Catches |
+|----------|----------------|
+| `social-email-spoof-check.yaml` | Missing/weak SPF and DMARC DNS records — flags domains spoofable via email |
+| `social-open-redirect-params.yaml` | Common open redirect query params (`?next=`, `?redirect=`, `?url=`, `?goto=`, `?return=`) with external URL injection |
+| `social-clickjacking-check.yaml` | Pages with login/password form fields missing both `X-Frame-Options` and `frame-ancestors` CSP directive |
+
+### Quick Build
+```bash
+go build ./cmd/nuclei/
+# or
+make build
+```
+
+### Running the Custom Templates
+```bash
+# Run all custom SE templates against a target list
+nuclei -l urls.txt -t nuclei-social-templates/ -silent
+
+# Run upstream templates by tag
+nuclei -l urls.txt -tags clickjacking -silent
+nuclei -t dns/ -silent
+nuclei -t http/ -silent
+```
+
+### Integration with social.sh
+`social.sh` uses nuclei in three phases:
+- **Phase 2** (DNS/email security): `nuclei -t nuclei-social-templates/social-email-spoof-check.yaml`
+- **Phase 3** (clickjacking): `nuclei -t nuclei-social-templates/social-clickjacking-check.yaml`
+- **Phase 9** (subdomain takeover): upstream `takeovers/` template tag
+
+See `ENHANCEMENTS.md` for full usage details.

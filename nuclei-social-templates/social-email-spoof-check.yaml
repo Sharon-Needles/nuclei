@@ -1,0 +1,51 @@
+id: social-email-spoof-check
+
+info:
+  name: Email Spoofing Surface — Weak or Missing SPF/DMARC
+  author: Sharon-Needles
+  severity: medium
+  description: |
+    Checks DNS records for missing or permissive SPF policies and missing DMARC records.
+    Domains with no SPF, "+all" (pass-all) SPF, or no DMARC record are trivially spoofable
+    and are a prime social engineering surface for phishing campaigns.
+  tags: dns,spf,dmarc,email,social-engineering,phishing
+  reference:
+    - https://datatracker.ietf.org/doc/html/rfc7208
+    - https://datatracker.ietf.org/doc/html/rfc7489
+
+dns:
+  - name: "{{FQDN}}"
+    type: TXT
+    matchers-condition: or
+    matchers:
+      # Flag if SPF record explicitly allows all senders ("+all" = anyone can send as this domain)
+      - type: word
+        name: spf-pass-all
+        words:
+          - "v=spf1 +all"
+          - "v=spf1+all"
+        condition: or
+
+      # Flag if no SPF record exists at all (absence = spoofable by default)
+      - type: word
+        name: no-spf-record
+        negative: true
+        words:
+          - "v=spf1"
+
+  - name: "_dmarc.{{FQDN}}"
+    type: TXT
+    matchers-condition: or
+    matchers:
+      # Flag if DMARC policy is "none" (monitor-only, no enforcement — domain is still spoofable)
+      - type: word
+        name: dmarc-policy-none
+        words:
+          - "p=none"
+
+      # Flag if DMARC record is entirely missing
+      - type: word
+        name: no-dmarc-record
+        negative: true
+        words:
+          - "v=DMARC1"
